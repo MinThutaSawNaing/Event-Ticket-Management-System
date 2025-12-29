@@ -1,0 +1,1240 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Event Ticket Management System</title>
+
+  <!-- Allowed CDN library -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+  <style>
+    :root{
+      --bg:#0b1220;
+      --panel:#121b2f;
+      --panel2:#0f1830;
+      --text:#e8eefc;
+      --muted:#a8b3d6;
+      --brand:#7c5cff;
+      --ok:#1bd6a4;
+      --warn:#ffcc66;
+      --bad:#ff5c7a;
+      --border:rgba(255,255,255,.10);
+      --shadow: 0 10px 25px rgba(0,0,0,.35);
+      --r:16px;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+      background: radial-gradient(1200px 600px at 10% 0%, rgba(124,92,255,.25), transparent 60%),
+                  radial-gradient(1200px 600px at 100% 10%, rgba(27,214,164,.18), transparent 55%),
+                  var(--bg);
+      color:var(--text);
+      min-height:100vh;
+    }
+    a{color:inherit}
+    .topbar{
+      position:sticky; top:0; z-index:10;
+      backdrop-filter: blur(10px);
+      background: rgba(11,18,32,.7);
+      border-bottom:1px solid var(--border);
+    }
+    .wrap{max-width:1100px; margin:0 auto; padding:16px}
+    .row{display:flex; gap:12px; align-items:center; flex-wrap:wrap}
+    .brand{
+      display:flex; align-items:center; gap:10px;
+      font-weight:800; letter-spacing:.4px;
+    }
+    .logo{
+      width:34px; height:34px; border-radius:12px;
+      background: linear-gradient(135deg, var(--brand), #39e6c2);
+      box-shadow: var(--shadow);
+    }
+    .pill{
+      font-size:12px; color:var(--muted);
+      border:1px solid var(--border);
+      padding:4px 10px; border-radius:999px;
+      background: rgba(255,255,255,.04);
+    }
+    .nav{
+      margin-left:auto;
+      display:flex; gap:10px; flex-wrap:wrap;
+    }
+    .btn{
+      border:1px solid var(--border);
+      background: rgba(255,255,255,.04);
+      color:var(--text);
+      padding:10px 12px;
+      border-radius:12px;
+      cursor:pointer;
+      transition: .15s transform, .15s background, .15s border-color;
+      user-select:none;
+    }
+    .btn:hover{transform: translateY(-1px); background: rgba(255,255,255,.07)}
+    .btn.primary{background: rgba(124,92,255,.18); border-color: rgba(124,92,255,.45)}
+    .btn.ok{background: rgba(27,214,164,.16); border-color: rgba(27,214,164,.45)}
+    .btn.bad{background: rgba(255,92,122,.14); border-color: rgba(255,92,122,.45)}
+    .btn:disabled{opacity:.55; cursor:not-allowed; transform:none}
+    .grid{
+      display:grid;
+      grid-template-columns: 1.2fr .8fr;
+      gap:16px;
+    }
+    @media (max-width: 900px){ .grid{grid-template-columns: 1fr} }
+    .card{
+      background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.03));
+      border:1px solid var(--border);
+      border-radius: var(--r);
+      box-shadow: var(--shadow);
+      overflow:hidden;
+    }
+    .card .hd{
+      padding:14px 14px;
+      border-bottom:1px solid var(--border);
+      display:flex; gap:10px; align-items:center; flex-wrap:wrap;
+      background: rgba(255,255,255,.03);
+    }
+    .card .bd{padding:14px}
+    .muted{color:var(--muted)}
+    .title{font-size:22px; font-weight:800; margin:0}
+    .subtitle{margin:0; color:var(--muted)}
+    .field{display:flex; flex-direction:column; gap:6px; margin:10px 0}
+    label{font-size:12px; color:var(--muted)}
+    input, textarea, select{
+      width:100%;
+      padding:10px 12px;
+      border-radius:12px;
+      border:1px solid var(--border);
+      background: rgba(255,255,255,.03);
+      color:var(--text);
+      outline:none;
+    }
+    textarea{min-height:92px; resize:vertical}
+    .hstack{display:flex; gap:10px; flex-wrap:wrap}
+    .hstack > *{flex:1}
+    .divider{height:1px; background: var(--border); margin:12px 0}
+    .list{display:flex; flex-direction:column; gap:10px}
+    .item{
+      border:1px solid var(--border);
+      background: rgba(255,255,255,.03);
+      border-radius: 14px;
+      padding:12px;
+      display:flex; gap:12px; align-items:flex-start; justify-content:space-between;
+    }
+    .item .meta{display:flex; flex-direction:column; gap:4px}
+    .kvs{display:flex; gap:8px; flex-wrap:wrap; margin-top:6px}
+    .kv{font-size:12px; color:var(--muted); border:1px solid var(--border); padding:4px 8px; border-radius:999px}
+    .badge{
+      font-size:12px; font-weight:700;
+      padding:4px 10px; border-radius:999px;
+      border:1px solid var(--border);
+      background: rgba(255,255,255,.04);
+    }
+    .badge.brand{border-color: rgba(124,92,255,.45); background: rgba(124,92,255,.18)}
+    .badge.ok{border-color: rgba(27,214,164,.45); background: rgba(27,214,164,.16)}
+    .badge.warn{border-color: rgba(255,204,102,.55); background: rgba(255,204,102,.12)}
+    .badge.bad{border-color: rgba(255,92,122,.55); background: rgba(255,92,122,.12)}
+    .toast{
+      position: fixed;
+      right: 16px; bottom: 16px;
+      max-width: 420px;
+      padding: 12px 14px;
+      border-radius: 14px;
+      background: rgba(18,27,47,.92);
+      border:1px solid var(--border);
+      box-shadow: var(--shadow);
+      display:none;
+      z-index:999;
+    }
+    .toast.show{display:block}
+    .toast .t{font-weight:800}
+    .toast .m{color:var(--muted); margin-top:4px}
+    .small{font-size:12px}
+    .right{margin-left:auto}
+    .hidden{display:none !important}
+    .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace}
+  </style>
+</head>
+
+<body>
+  <div class="topbar">
+    <div class="wrap row">
+      <div class="brand" style="gap:12px">
+        <div class="logo"></div>
+        <div>
+          <div style="font-size:14px; font-weight:900">EVENT TICKET MANAGEMENT SYSTEM</div>
+          <div class="muted small">Single Page App • Flask + MongoDB</div>
+        </div>
+      </div>
+
+      <div class="pill" id="pillUser">Not signed in</div>
+
+      <div class="nav">
+        <button class="btn" id="navBrowse" onclick="go('#/browse')">Browse</button>
+        <button class="btn" id="navSales" onclick="go('#/sales')">Sales</button>
+        <button class="btn" id="navManage" onclick="go('#/manage')">Manage</button>
+        <button class="btn primary" id="navLogin" onclick="go('#/login')">Login</button>
+        <button class="btn ok hidden" id="navLogout" onclick="doLogout()">Logout</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <!-- VIEW: Browse -->
+    <section id="viewBrowse" class="view">
+      <div class="grid">
+        <div class="card">
+          <div class="hd">
+            <div>
+              <div class="title">Browse Events</div>
+              <div class="subtitle">Search and filter without reloading</div>
+            </div>
+            <div class="right hstack" style="min-width: 320px">
+              <input id="searchQ" placeholder="Keyword..." oninput="debouncedRefreshEvents()" />
+              <select id="filterCategory" onchange="refreshEvents()">
+                <option value="">All Categories</option>
+                <option>Music</option>
+                <option>Sports</option>
+                <option>Business</option>
+                <option>Tech</option>
+                <option>Arts</option>
+                <option>Community</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="bd">
+            <div class="hstack">
+              <div class="field" style="margin-top:0">
+                <label>Date From (ISO or YYYY-MM-DD)</label>
+                <input id="dateFrom" placeholder="2026-01-01" oninput="debouncedRefreshEvents()" />
+              </div>
+              <div class="field" style="margin-top:0">
+                <label>Date To (ISO or YYYY-MM-DD)</label>
+                <input id="dateTo" placeholder="2026-01-31" oninput="debouncedRefreshEvents()" />
+              </div>
+              <div class="field" style="margin-top:0">
+                <label>Location / Venue</label>
+                <input id="filterVenue" placeholder="Yangon, Arena..." oninput="debouncedRefreshEvents()" />
+              </div>
+            </div>
+
+            <div class="divider"></div>
+            <div id="eventsList" class="list"></div>
+            <div id="eventsEmpty" class="muted small hidden">No events found.</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="hd">
+            <div>
+              <div style="font-weight:900">Event Details</div>
+              <div class="muted small">Tickets, availability, purchase</div>
+            </div>
+            <div class="right">
+              <span class="badge brand" id="detailCategory">—</span>
+            </div>
+          </div>
+          <div class="bd">
+            <div id="detailEmpty" class="muted">Select an event to see details.</div>
+            <div id="detailWrap" class="hidden">
+              <div style="display:flex; gap:10px; align-items:flex-start; justify-content:space-between">
+                <div>
+                  <div style="font-size:18px; font-weight:900" id="detailTitle"></div>
+                  <div class="muted small" id="detailMeta"></div>
+                </div>
+              </div>
+              <div class="divider"></div>
+              <div id="detailDesc" class="muted"></div>
+
+              <div class="divider"></div>
+              <div style="font-weight:900; margin-bottom:8px">Ticket Types</div>
+              <div id="ticketsList" class="list"></div>
+              <div id="ticketsEmpty" class="muted small hidden">No ticket types yet.</div>
+
+              <div class="divider"></div>
+              <div class="muted small">
+                Note: Purchases require login. Overselling is prevented server-side.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- VIEW: Login/Register -->
+    <section id="viewLogin" class="view hidden">
+      <div class="grid">
+        <div class="card">
+          <div class="hd">
+            <div>
+              <div class="title">Login</div>
+              <div class="subtitle">Session-based auth (Flask-Login)</div>
+            </div>
+          </div>
+          <div class="bd">
+            <div class="field">
+              <label>Email</label>
+              <input id="loginEmail" placeholder="admin@example.com" autocomplete="username" />
+            </div>
+            <div class="field">
+              <label>Password</label>
+              <input id="loginPassword" type="password" placeholder="••••••••" autocomplete="current-password" />
+            </div>
+            <div class="hstack">
+              <button class="btn primary" onclick="doLogin()">Login</button>
+              <button class="btn" onclick="fillAdmin()">Use default admin</button>
+            </div>
+            <div class="divider"></div>
+            <div class="muted small">
+              Default admin is auto-created:
+              <span class="mono">admin@example.com</span> /
+              <span class="mono">Admin123!</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="hd">
+            <div>
+              <div class="title">Register</div>
+              <div class="subtitle">Attendee or Organizer</div>
+            </div>
+          </div>
+          <div class="bd">
+            <div class="field">
+              <label>Email</label>
+              <input id="regEmail" placeholder="you@example.com" autocomplete="email" />
+            </div>
+            <div class="field">
+              <label>Password</label>
+              <input id="regPassword" type="password" placeholder="At least 6 characters" autocomplete="new-password" />
+            </div>
+            <div class="field">
+              <label>Role</label>
+              <select id="regRole">
+                <option value="attendee">Attendee</option>
+                <option value="organizer">Organizer</option>
+              </select>
+            </div>
+            <button class="btn ok" onclick="doRegister()">Create account</button>
+            <div class="divider"></div>
+            <div class="muted small">
+              Admin role is reserved. Use the default admin credentials above.
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- VIEW: Manage (Organizers/Admin) -->
+    <section id="viewManage" class="view hidden">
+      <div class="grid">
+        <div class="card">
+          <div class="hd">
+            <div>
+              <div class="title">Manage Events</div>
+              <div class="subtitle">Create, edit, delete (Organizer: own events • Admin: all)</div>
+            </div>
+            <button class="btn primary right" onclick="openEventEditor()">New Event</button>
+          </div>
+          <div class="bd">
+            <div id="myEventsList" class="list"></div>
+            <div id="myEventsEmpty" class="muted small hidden">No events yet.</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="hd">
+            <div>
+              <div style="font-weight:900">Editor</div>
+              <div class="muted small">Event + Ticket Types</div>
+            </div>
+            <span class="badge warn right" id="editorMode">Idle</span>
+          </div>
+
+          <div class="bd">
+            <div id="editorLocked" class="muted">
+              Select an event (left) or click “New Event”.
+            </div>
+
+            <div id="editorWrap" class="hidden">
+              <div class="field">
+                <label>Title</label>
+                <input id="evTitle" />
+              </div>
+              <div class="field">
+                <label>Description</label>
+                <textarea id="evDesc"></textarea>
+              </div>
+              <div class="hstack">
+                <div class="field">
+                  <label>Category</label>
+                  <input id="evCategory" placeholder="Music / Sports / Tech..." />
+                </div>
+                <div class="field">
+                  <label>Date/Time (ISO string)</label>
+                  <input id="evDT" placeholder="2026-01-15T18:30:00+00:00" />
+                </div>
+              </div>
+              <div class="hstack">
+                <div class="field">
+                  <label>Venue / Location</label>
+                  <input id="evVenue" />
+                </div>
+                <div class="field">
+                  <label>Capacity</label>
+                  <input id="evCapacity" type="number" min="1" />
+                </div>
+              </div>
+
+              <div class="hstack">
+                <button class="btn ok" id="btnSaveEvent" onclick="saveEvent()">Save</button>
+                <button class="btn bad" id="btnDeleteEvent" onclick="deleteEvent()">Delete</button>
+              </div>
+
+              <div class="divider"></div>
+
+              <div style="display:flex; align-items:center; justify-content:space-between; gap:10px">
+                <div>
+                  <div style="font-weight:900">Ticket Types</div>
+                  <div class="muted small">VIP, General, etc. Prevent overselling</div>
+                </div>
+                <button class="btn primary" onclick="openTicketEditor()">Add Ticket Type</button>
+              </div>
+
+              <div style="margin-top:10px" id="manageTicketsList" class="list"></div>
+              <div id="manageTicketsEmpty" class="muted small hidden">No ticket types yet.</div>
+
+              <div class="divider"></div>
+
+              <div id="ticketEditor" class="hidden">
+                <div class="badge brand" style="display:inline-block; margin-bottom:10px">Ticket Type Editor</div>
+                <div class="hstack">
+                  <div class="field">
+                    <label>Name</label>
+                    <input id="tkName" placeholder="VIP" />
+                  </div>
+                  <div class="field">
+                    <label>Price</label>
+                    <input id="tkPrice" type="number" min="0" step="0.01" placeholder="50" />
+                  </div>
+                  <div class="field">
+                    <label>Quantity</label>
+                    <input id="tkQty" type="number" min="1" step="1" placeholder="100" />
+                  </div>
+                </div>
+                <div class="hstack">
+                  <button class="btn ok" id="btnSaveTicket" onclick="saveTicket()">Save Ticket</button>
+                  <button class="btn" onclick="closeTicketEditor()">Cancel</button>
+                  <button class="btn bad hidden" id="btnDeleteTicket" onclick="deleteTicket()">Delete Ticket</button>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- VIEW: Sales (Organizers/Admin) -->
+    <section id="viewSales" class="view hidden">
+      <div class="grid">
+        <div class="card">
+          <div class="hd">
+            <div>
+              <div class="title">Sales Dashboard</div>
+              <div class="subtitle">Tickets sold • revenue • most popular events</div>
+            </div>
+            <button class="btn primary right" onclick="loadSales()">Refresh</button>
+          </div>
+          <div class="bd">
+            <div class="hstack">
+              <div class="card" style="flex:1; background:rgba(255,255,255,.03)">
+                <div class="bd">
+                  <div class="muted small">Total Revenue</div>
+                  <div style="font-size:26px; font-weight:900" id="sumRevenue">—</div>
+                </div>
+              </div>
+              <div class="card" style="flex:1; background:rgba(255,255,255,.03)">
+                <div class="bd">
+                  <div class="muted small">Total Tickets</div>
+                  <div style="font-size:26px; font-weight:900" id="sumTickets">—</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <div style="font-weight:900; margin-bottom:8px">Revenue per Event</div>
+            <canvas id="revChart" height="120"></canvas>
+
+            <div class="divider"></div>
+
+            <div style="font-weight:900; margin-bottom:8px">Details</div>
+            <div id="salesList" class="list"></div>
+            <div id="salesEmpty" class="muted small hidden">No sales yet.</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="hd">
+            <div>
+              <div style="font-weight:900">Most Popular Events</div>
+              <div class="muted small">By tickets sold</div>
+            </div>
+          </div>
+          <div class="bd">
+            <div id="popularList" class="list"></div>
+            <div id="popularEmpty" class="muted small hidden">No data yet.</div>
+            <div class="divider"></div>
+            <div class="muted small">
+              Chart.js is loaded via CDN (allowed).
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div class="toast" id="toast">
+    <div class="t" id="toastTitle">—</div>
+    <div class="m" id="toastMsg">—</div>
+  </div>
+
+<script>
+  // -----------------------
+  // SPA Router
+  // -----------------------
+  const views = {
+    browse: document.getElementById('viewBrowse'),
+    login: document.getElementById('viewLogin'),
+    manage: document.getElementById('viewManage'),
+    sales: document.getElementById('viewSales'),
+  };
+
+  function go(hash){ location.hash = hash; }
+  function showView(name){
+    Object.values(views).forEach(v => v.classList.add('hidden'));
+    (views[name] || views.browse).classList.remove('hidden');
+  }
+
+  window.addEventListener('hashchange', () => route());
+  function route(){
+    const h = location.hash || '#/browse';
+    const page = (h.split('/')[1] || 'browse').toLowerCase();
+
+    if((page === 'manage' || page === 'sales')){
+      if(!state.user){ toast('Login required', 'Please sign in to access this page.', 'warn'); go('#/login'); return; }
+      if(!(state.user.role === 'admin' || state.user.role === 'organizer')){
+        toast('Forbidden', 'This page is for Admin/Organizer.', 'bad');
+        go('#/browse'); return;
+      }
+    }
+
+    showView(page);
+
+    if(page === 'browse') refreshEvents();
+    if(page === 'manage') loadMyEvents();
+    if(page === 'sales') loadSales();
+  }
+
+  // -----------------------
+  // State + helpers
+  // -----------------------
+  const state = {
+    user: null,
+    events: [],
+    selectedEvent: null,
+    selectedEventTickets: [],
+    editor: { eventId: null, mode: 'idle', ticketMode: 'none', ticketId: null },
+    chart: null,
+  };
+
+  function toast(title, msg, kind='brand'){
+    const el = document.getElementById('toast');
+    document.getElementById('toastTitle').textContent = title;
+    document.getElementById('toastMsg').textContent = msg;
+    el.classList.add('show');
+    el.style.borderColor = kind==='bad' ? 'rgba(255,92,122,.55)'
+                      : kind==='warn' ? 'rgba(255,204,102,.55)'
+                      : kind==='ok'   ? 'rgba(27,214,164,.45)'
+                                      : 'rgba(124,92,255,.45)';
+    clearTimeout(toast._t);
+    toast._t = setTimeout(() => el.classList.remove('show'), 3000);
+  }
+
+  function money(x){
+    const n = Number(x || 0);
+    return n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  // Robust JSON fetch: timeout + consistent error reporting
+  async function api(path, { method='GET', body=null, headers={}, timeoutMs=12000 } = {}){
+    const controller = new AbortController();
+    const t = setTimeout(() => controller.abort(), timeoutMs);
+
+    try{
+      const res = await fetch(path, {
+        method,
+        headers: { 'Content-Type': 'application/json', ...headers },
+        credentials: 'same-origin',
+        body: body ? JSON.stringify(body) : null,
+        signal: controller.signal
+      });
+
+      let data = null;
+      try{ data = await res.json(); } catch(_){ data = null; }
+
+      if(!res.ok || !data || data.ok !== true){
+        const msg = (data && data.error) ? data.error : `Request failed (${res.status})`;
+        const code = (data && data.code) ? data.code : 'request_failed';
+        const rid = (data && data.request_id) ? ` (request_id: ${data.request_id})` : '';
+        throw new Error(`${msg}${rid}`);
+      }
+      return data;
+    } catch(e){
+      if(e.name === 'AbortError') throw new Error('Request timed out. Please try again.');
+      throw e;
+    } finally {
+      clearTimeout(t);
+    }
+  }
+
+  // -----------------------
+  // Auth
+  // -----------------------
+  function fillAdmin(){
+    document.getElementById('loginEmail').value = 'admin@example.com';
+    document.getElementById('loginPassword').value = 'Admin123!';
+  }
+
+  async function loadMe(){
+    const data = await api('/api/me', { method:'GET', headers:{} });
+    state.user = data.user;
+    renderUserPill();
+  }
+
+  function renderUserPill(){
+    const pill = document.getElementById('pillUser');
+    const navLogin = document.getElementById('navLogin');
+    const navLogout = document.getElementById('navLogout');
+
+    if(!state.user){
+      pill.textContent = 'Not signed in';
+      navLogin.classList.remove('hidden');
+      navLogout.classList.add('hidden');
+      return;
+    }
+    pill.textContent = `${state.user.email} • ${state.user.role.toUpperCase()}`;
+    navLogin.classList.add('hidden');
+    navLogout.classList.remove('hidden');
+  }
+
+  async function doLogin(){
+    const email = document.getElementById('loginEmail').value.trim();
+    const password = document.getElementById('loginPassword').value;
+    if(!email || !password){ toast('Missing info', 'Enter email and password.', 'warn'); return; }
+
+    try{
+      const data = await api('/api/login', { method:'POST', body:{ email, password } });
+      state.user = data.user;
+      renderUserPill();
+      toast('Welcome', `Signed in as ${state.user.role}.`, 'ok');
+      go('#/browse');
+      await refreshEvents();
+    }catch(e){
+      toast('Login failed', e.message, 'bad');
+    }
+  }
+
+  async function doRegister(){
+    const email = document.getElementById('regEmail').value.trim();
+    const password = document.getElementById('regPassword').value;
+    const role = document.getElementById('regRole').value;
+    if(!email || !password){ toast('Missing info', 'Enter email and password.', 'warn'); return; }
+
+    try{
+      const data = await api('/api/register', { method:'POST', body:{ email, password, role } });
+      state.user = data.user;
+      renderUserPill();
+      toast('Account created', `Signed in as ${state.user.role}.`, 'ok');
+      go('#/browse');
+      await refreshEvents();
+    }catch(e){
+      toast('Registration failed', e.message, 'bad');
+    }
+  }
+
+  async function doLogout(){
+    try{
+      await api('/api/logout', { method:'POST', body:{} });
+      state.user = null;
+      state.selectedEvent = null;
+      state.selectedEventTickets = [];
+      renderUserPill();
+      toast('Signed out', 'You are now logged out.', 'ok');
+      go('#/browse');
+      await refreshEvents();
+      renderEventDetails(null);
+    }catch(e){
+      toast('Logout failed', e.message, 'bad');
+    }
+  }
+
+  // -----------------------
+  // Browse
+  // -----------------------
+  let _debounceT = null;
+  function debouncedRefreshEvents(){
+    clearTimeout(_debounceT);
+    _debounceT = setTimeout(refreshEvents, 200);
+  }
+
+  function buildEventsQuery(){
+    const q = document.getElementById('searchQ').value.trim();
+    const category = document.getElementById('filterCategory').value.trim();
+    const venue = document.getElementById('filterVenue').value.trim();
+    const date_from = document.getElementById('dateFrom').value.trim();
+    const date_to = document.getElementById('dateTo').value.trim();
+
+    const params = new URLSearchParams();
+    if(q) params.set('q', q);
+    if(category) params.set('category', category);
+    if(venue) params.set('venue', venue);
+    if(date_from) params.set('date_from', date_from);
+    if(date_to) params.set('date_to', date_to);
+    const s = params.toString();
+    return s ? `?${s}` : '';
+  }
+
+  async function refreshEvents(){
+    try{
+      const data = await api('/api/events' + buildEventsQuery(), { method:'GET', headers:{} });
+      state.events = data.events || [];
+      renderEventsList();
+    }catch(e){
+      toast('Error', e.message, 'bad');
+    }
+  }
+
+  function renderEventsList(){
+    const list = document.getElementById('eventsList');
+    const empty = document.getElementById('eventsEmpty');
+    list.innerHTML = '';
+    if(!state.events.length){
+      empty.classList.remove('hidden');
+      return;
+    }
+    empty.classList.add('hidden');
+
+    state.events.forEach(ev => {
+      const el = document.createElement('div');
+      el.className = 'item';
+      el.innerHTML = `
+        <div class="meta">
+          <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap">
+            <div style="font-weight:900">${escapeHtml(ev.title)}</div>
+            <span class="badge brand">${escapeHtml(ev.category || 'Uncategorized')}</span>
+          </div>
+          <div class="muted small">${escapeHtml(ev.dt || '')}</div>
+          <div class="kvs">
+            <span class="kv">Venue: ${escapeHtml(ev.venue || '—')}</span>
+            <span class="kv">Capacity: ${Number(ev.capacity||0)}</span>
+          </div>
+        </div>
+        <div style="display:flex; gap:8px; align-items:center">
+          <button class="btn" onclick="selectEvent('${ev.id}')">View</button>
+        </div>
+      `;
+      list.appendChild(el);
+    });
+  }
+
+  async function selectEvent(eventId){
+    try{
+      const data = await api(`/api/events/${eventId}`, { method:'GET', headers:{} });
+      state.selectedEvent = data.event;
+      state.selectedEventTickets = data.ticket_types || [];
+      renderEventDetails(state.selectedEvent);
+    }catch(e){
+      toast('Error', e.message, 'bad');
+    }
+  }
+
+  function renderEventDetails(ev){
+    const empty = document.getElementById('detailEmpty');
+    const wrap = document.getElementById('detailWrap');
+    const cat = document.getElementById('detailCategory');
+
+    if(!ev){
+      empty.classList.remove('hidden');
+      wrap.classList.add('hidden');
+      cat.textContent = '—';
+      return;
+    }
+
+    empty.classList.add('hidden');
+    wrap.classList.remove('hidden');
+
+    document.getElementById('detailTitle').textContent = ev.title || '';
+    document.getElementById('detailMeta').textContent = `${ev.dt || ''} • ${ev.venue || ''} • Capacity ${Number(ev.capacity||0)}`;
+    document.getElementById('detailDesc').textContent = ev.description || '';
+    cat.textContent = ev.category || 'Uncategorized';
+
+    const list = document.getElementById('ticketsList');
+    const tEmpty = document.getElementById('ticketsEmpty');
+    list.innerHTML = '';
+
+    if(!state.selectedEventTickets.length){
+      tEmpty.classList.remove('hidden');
+      return;
+    }
+    tEmpty.classList.add('hidden');
+
+    state.selectedEventTickets.forEach(t => {
+      const available = Number(t.available || 0);
+      const sold = Number(t.sold || 0);
+      const qty = Number(t.quantity || 0);
+
+      const badge =
+        available <= 0 ? `<span class="badge bad">Sold out</span>` :
+        available <= Math.max(5, Math.floor(qty*0.1)) ? `<span class="badge warn">Low</span>` :
+        `<span class="badge ok">Available</span>`;
+
+      const canBuy = !!state.user && available > 0;
+      const el = document.createElement('div');
+      el.className = 'item';
+      el.innerHTML = `
+        <div class="meta">
+          <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap">
+            <div style="font-weight:900">${escapeHtml(t.name)}</div>
+            ${badge}
+          </div>
+          <div class="muted small">$${money(t.price)} • ${available} left • ${sold}/${qty} sold</div>
+        </div>
+        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; justify-content:flex-end">
+          <input id="buyQty_${t.id}" type="number" min="1" value="1" style="width:86px" ${canBuy ? '' : 'disabled'} />
+          <button class="btn primary" ${canBuy ? '' : 'disabled'} onclick="buyTicket('${t.id}')">Buy</button>
+        </div>
+      `;
+      list.appendChild(el);
+    });
+  }
+
+  async function buyTicket(ticketTypeId){
+    if(!state.user){
+      toast('Login required', 'Please sign in to purchase tickets.', 'warn');
+      go('#/login'); return;
+    }
+    const qtyEl = document.getElementById(`buyQty_${ticketTypeId}`);
+    const quantity = Math.max(1, Number(qtyEl ? qtyEl.value : 1) || 1);
+
+    try{
+      const data = await api('/api/purchase', { method:'POST', body:{ ticket_type_id: ticketTypeId, quantity }});
+      toast('Success', data.message || 'Purchase complete.', 'ok');
+      if(state.selectedEvent?.id) await selectEvent(state.selectedEvent.id);
+    }catch(e){
+      toast('Purchase failed', e.message, 'bad');
+      if(state.selectedEvent?.id) await selectEvent(state.selectedEvent.id);
+    }
+  }
+
+  // -----------------------
+  // Manage
+  // -----------------------
+  async function loadMyEvents(){
+    try{
+      const data = await api('/api/my/events', { method:'GET', headers:{} });
+      renderMyEvents(data.events || []);
+    }catch(e){
+      toast('Error', e.message, 'bad');
+    }
+  }
+
+  function renderMyEvents(events){
+    const list = document.getElementById('myEventsList');
+    const empty = document.getElementById('myEventsEmpty');
+    list.innerHTML = '';
+
+    if(!events.length){
+      empty.classList.remove('hidden');
+      return;
+    }
+    empty.classList.add('hidden');
+
+    events.forEach(ev => {
+      const el = document.createElement('div');
+      el.className = 'item';
+      el.innerHTML = `
+        <div class="meta">
+          <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap">
+            <div style="font-weight:900">${escapeHtml(ev.title)}</div>
+            <span class="badge brand">${escapeHtml(ev.category || 'Uncategorized')}</span>
+          </div>
+          <div class="muted small">${escapeHtml(ev.dt || '')}</div>
+          <div class="kvs">
+            <span class="kv">Venue: ${escapeHtml(ev.venue || '—')}</span>
+            <span class="kv">Capacity: ${Number(ev.capacity||0)}</span>
+          </div>
+        </div>
+        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; justify-content:flex-end">
+          <button class="btn" onclick="openEventEditor('${ev.id}')">Edit</button>
+          <button class="btn" onclick="selectEventFromManage('${ev.id}')">Preview</button>
+        </div>
+      `;
+      list.appendChild(el);
+    });
+  }
+
+  async function selectEventFromManage(eventId){
+    await selectEvent(eventId);
+    toast('Preview', 'Loaded event into Browse details pane.', 'brand');
+    go('#/browse');
+  }
+
+  function openEventEditor(eventId=null){
+    state.editor.ticketMode = 'none';
+    state.editor.ticketId = null;
+    closeTicketEditor();
+
+    document.getElementById('editorLocked').classList.add('hidden');
+    document.getElementById('editorWrap').classList.remove('hidden');
+
+    if(!eventId){
+      state.editor.mode = 'new';
+      state.editor.eventId = null;
+      setEditorModeBadge('New Event');
+      setEventForm({ title:'', description:'', category:'', dt:'', venue:'', capacity:100 });
+      document.getElementById('btnDeleteEvent').disabled = true;
+      document.getElementById('manageTicketsList').innerHTML = '';
+      document.getElementById('manageTicketsEmpty').classList.remove('hidden');
+      return;
+    }
+
+    state.editor.mode = 'edit';
+    state.editor.eventId = eventId;
+    setEditorModeBadge('Edit Event');
+    document.getElementById('btnDeleteEvent').disabled = false;
+    loadEventIntoEditor(eventId);
+  }
+
+  function setEditorModeBadge(text){
+    document.getElementById('editorMode').textContent = text;
+  }
+
+  function setEventForm(ev){
+    document.getElementById('evTitle').value = ev.title || '';
+    document.getElementById('evDesc').value = ev.description || '';
+    document.getElementById('evCategory').value = ev.category || '';
+    document.getElementById('evDT').value = ev.dt || '';
+    document.getElementById('evVenue').value = ev.venue || '';
+    document.getElementById('evCapacity').value = Number(ev.capacity || 0);
+  }
+
+  async function loadEventIntoEditor(eventId){
+    try{
+      const data = await api(`/api/events/${eventId}`, { method:'GET', headers:{} });
+      setEventForm(data.event);
+      renderManageTickets(data.ticket_types || []);
+    }catch(e){
+      toast('Error', e.message, 'bad');
+    }
+  }
+
+  async function saveEvent(){
+    const body = {
+      title: document.getElementById('evTitle').value.trim(),
+      description: document.getElementById('evDesc').value.trim(),
+      category: document.getElementById('evCategory').value.trim(),
+      dt: document.getElementById('evDT').value.trim(),
+      venue: document.getElementById('evVenue').value.trim(),
+      capacity: Number(document.getElementById('evCapacity').value || 0),
+    };
+
+    if(!body.title){ toast('Validation', 'Title is required.', 'warn'); return; }
+    if(!body.dt){ toast('Validation', 'Date/time (ISO) is required.', 'warn'); return; }
+    if(!body.capacity || body.capacity < 1){ toast('Validation', 'Capacity must be >= 1.', 'warn'); return; }
+
+    try{
+      if(state.editor.mode === 'new'){
+        const data = await api('/api/events', { method:'POST', body });
+        toast('Created', 'Event created successfully.', 'ok');
+        openEventEditor(data.event.id);
+      }else{
+        await api(`/api/events/${state.editor.eventId}`, { method:'PUT', body });
+        toast('Saved', 'Event updated.', 'ok');
+      }
+      await loadMyEvents();
+      await refreshEvents();
+    }catch(e){
+      toast('Save failed', e.message, 'bad');
+    }
+  }
+
+  async function deleteEvent(){
+    const id = state.editor.eventId;
+    if(!id) return;
+    if(!confirm('Delete this event and all its tickets/sales?')) return;
+
+    try{
+      await api(`/api/events/${id}`, { method:'DELETE' });
+      toast('Deleted', 'Event deleted.', 'ok');
+      state.editor = { eventId:null, mode:'idle', ticketMode:'none', ticketId:null };
+      document.getElementById('editorLocked').classList.remove('hidden');
+      document.getElementById('editorWrap').classList.add('hidden');
+      setEditorModeBadge('Idle');
+      await loadMyEvents();
+      await refreshEvents();
+    }catch(e){
+      toast('Delete failed', e.message, 'bad');
+    }
+  }
+
+  function renderManageTickets(tickets){
+    const list = document.getElementById('manageTicketsList');
+    const empty = document.getElementById('manageTicketsEmpty');
+    list.innerHTML = '';
+
+    if(!tickets.length){
+      empty.classList.remove('hidden');
+      return;
+    }
+    empty.classList.add('hidden');
+
+    tickets.forEach(t => {
+      const available = Number(t.available || 0);
+      const el = document.createElement('div');
+      el.className = 'item';
+      el.innerHTML = `
+        <div class="meta">
+          <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap">
+            <div style="font-weight:900">${escapeHtml(t.name)}</div>
+            <span class="badge ${available>0?'ok':'bad'}">${available>0 ? (available+' left') : 'Sold out'}</span>
+          </div>
+          <div class="muted small">$${money(t.price)} • Sold ${Number(t.sold||0)} / ${Number(t.quantity||0)}</div>
+        </div>
+        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; justify-content:flex-end">
+          <button class="btn" onclick="editTicket('${t.id}')">Edit</button>
+        </div>
+      `;
+      list.appendChild(el);
+    });
+
+    state.selectedEventTickets = tickets;
+  }
+
+  function openTicketEditor(){
+    if(!state.editor.eventId){
+      toast('Create event first', 'Save the event before adding ticket types.', 'warn');
+      return;
+    }
+    state.editor.ticketMode = 'new';
+    state.editor.ticketId = null;
+    document.getElementById('ticketEditor').classList.remove('hidden');
+    document.getElementById('btnDeleteTicket').classList.add('hidden');
+    document.getElementById('tkName').value = '';
+    document.getElementById('tkPrice').value = '';
+    document.getElementById('tkQty').value = '';
+  }
+
+  function closeTicketEditor(){
+    document.getElementById('ticketEditor').classList.add('hidden');
+    state.editor.ticketMode = 'none';
+    state.editor.ticketId = null;
+  }
+
+  function editTicket(ticketId){
+    const t = (state.selectedEventTickets || []).find(x => x.id === ticketId);
+    if(!t) return;
+    state.editor.ticketMode = 'edit';
+    state.editor.ticketId = ticketId;
+
+    document.getElementById('ticketEditor').classList.remove('hidden');
+    document.getElementById('btnDeleteTicket').classList.toggle('hidden', Number(t.sold||0) > 0);
+    document.getElementById('tkName').value = t.name || '';
+    document.getElementById('tkPrice').value = Number(t.price||0);
+    document.getElementById('tkQty').value = Number(t.quantity||0);
+  }
+
+  async function saveTicket(){
+    if(!state.editor.eventId) return;
+
+    const body = {
+      name: document.getElementById('tkName').value.trim(),
+      price: Number(document.getElementById('tkPrice').value || 0),
+      quantity: Number(document.getElementById('tkQty').value || 0),
+    };
+
+    if(!body.name){ toast('Validation', 'Ticket name is required.', 'warn'); return; }
+    if(body.price < 0){ toast('Validation', 'Price must be >= 0.', 'warn'); return; }
+    if(!body.quantity || body.quantity < 1){ toast('Validation', 'Quantity must be >= 1.', 'warn'); return; }
+
+    try{
+      if(state.editor.ticketMode === 'new'){
+        await api(`/api/events/${state.editor.eventId}/tickets`, { method:'POST', body });
+        toast('Created', 'Ticket type added.', 'ok');
+      }else if(state.editor.ticketMode === 'edit'){
+        await api(`/api/tickets/${state.editor.ticketId}`, { method:'PUT', body });
+        toast('Saved', 'Ticket type updated.', 'ok');
+      }
+      await loadEventIntoEditor(state.editor.eventId);
+      closeTicketEditor();
+    }catch(e){
+      toast('Ticket save failed', e.message, 'bad');
+    }
+  }
+
+  async function deleteTicket(){
+    const id = state.editor.ticketId;
+    if(!id) return;
+    if(!confirm('Delete this ticket type? (Only allowed if no sales)')) return;
+
+    try{
+      await api(`/api/tickets/${id}`, { method:'DELETE' });
+      toast('Deleted', 'Ticket type deleted.', 'ok');
+      await loadEventIntoEditor(state.editor.eventId);
+      closeTicketEditor();
+    }catch(e){
+      toast('Delete failed', e.message, 'bad');
+    }
+  }
+
+  // -----------------------
+  // Sales
+  // -----------------------
+  async function loadSales(){
+    try{
+      const data = await api('/api/sales', { method:'GET', headers:{} });
+      document.getElementById('sumRevenue').textContent = '$' + money(data.summary.total_revenue || 0);
+      document.getElementById('sumTickets').textContent = String(data.summary.total_tickets || 0);
+
+      renderSalesList(data.per_event || []);
+      renderPopularList(data.most_popular || []);
+      renderRevenueChart(data.per_event || []);
+    }catch(e){
+      toast('Error', e.message, 'bad');
+    }
+  }
+
+  function renderSalesList(rows){
+    const list = document.getElementById('salesList');
+    const empty = document.getElementById('salesEmpty');
+    list.innerHTML = '';
+
+    if(!rows.length){
+      empty.classList.remove('hidden');
+      return;
+    }
+    empty.classList.add('hidden');
+
+    rows.forEach(r => {
+      const ev = r.event;
+      const el = document.createElement('div');
+      el.className = 'item';
+      el.innerHTML = `
+        <div class="meta">
+          <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap">
+            <div style="font-weight:900">${escapeHtml(ev.title)}</div>
+            <span class="badge brand">${escapeHtml(ev.category || 'Uncategorized')}</span>
+          </div>
+          <div class="muted small">${escapeHtml(ev.dt || '')} • ${escapeHtml(ev.venue || '')}</div>
+          <div class="kvs">
+            <span class="kv">Tickets sold: ${Number(r.tickets_sold||0)}</span>
+            <span class="kv">Revenue: $${money(r.revenue||0)}</span>
+          </div>
+        </div>
+        <div style="display:flex; gap:8px; align-items:center">
+          <button class="btn" onclick="selectEventFromSales('${ev.id}')">View</button>
+        </div>
+      `;
+      list.appendChild(el);
+    });
+  }
+
+  function renderPopularList(rows){
+    const list = document.getElementById('popularList');
+    const empty = document.getElementById('popularEmpty');
+    list.innerHTML = '';
+
+    if(!rows.length){
+      empty.classList.remove('hidden');
+      return;
+    }
+    empty.classList.add('hidden');
+
+    rows.forEach((r, idx) => {
+      const ev = r.event;
+      const el = document.createElement('div');
+      el.className = 'item';
+      el.innerHTML = `
+        <div class="meta">
+          <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap">
+            <span class="badge ok">#${idx+1}</span>
+            <div style="font-weight:900">${escapeHtml(ev.title)}</div>
+          </div>
+          <div class="muted small">${escapeHtml(ev.dt || '')} • ${escapeHtml(ev.venue || '')}</div>
+          <div class="kvs">
+            <span class="kv">Tickets: ${Number(r.tickets_sold||0)}</span>
+            <span class="kv">Revenue: $${money(r.revenue||0)}</span>
+          </div>
+        </div>
+        <div style="display:flex; gap:8px; align-items:center">
+          <button class="btn" onclick="selectEventFromSales('${ev.id}')">View</button>
+        </div>
+      `;
+      list.appendChild(el);
+    });
+  }
+
+  async function selectEventFromSales(eventId){
+    await selectEvent(eventId);
+    go('#/browse');
+  }
+
+  function renderRevenueChart(rows){
+    const labels = rows.map(r => r.event.title);
+    const values = rows.map(r => Number(r.revenue || 0));
+
+    const ctx = document.getElementById('revChart');
+    if(state.chart){ state.chart.destroy(); state.chart = null; }
+
+    state.chart = new Chart(ctx, {
+      type: 'bar',
+      data: { labels, datasets: [{ label: 'Revenue', data: values }] },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: { y: { ticks: { callback: (v) => '$' + v } } }
+      }
+    });
+  }
+
+  // -----------------------
+  // Safe escaping
+  // -----------------------
+  function escapeHtml(s){
+    return String(s ?? '')
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#039;');
+  }
+
+  // -----------------------
+  // Init
+  // -----------------------
+  (async function init(){
+    try{
+      await loadMe();
+    }catch(e){
+      toast('Backend error', 'Make sure Flask is running and MongoDB is available.', 'bad');
+    }
+    renderUserPill();
+    route();
+  })();
+</script>
+</body>
+</html>
