@@ -110,6 +110,12 @@
       color:var(--text);
       outline:none;
     }
+    /* Fix: ensure dropdown options are readable (some browsers render option bg as white) */
+    select{ appearance:auto; }
+    option{
+      background: var(--panel);
+      color: var(--text);
+    }
     textarea{min-height:92px; resize:vertical}
     .hstack{display:flex; gap:10px; flex-wrap:wrap}
     .hstack > *{flex:1}
@@ -154,6 +160,41 @@
     .right{margin-left:auto}
     .hidden{display:none !important}
     .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace}
+  
+    /* Payment modal */
+    .modal{
+      position:fixed; inset:0;
+      background: rgba(0,0,0,.55);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      padding:18px;
+      z-index:1000;
+    }
+    .modal.show{display:flex}
+    .modal-card{
+      width:min(520px, 100%);
+      border-radius: calc(var(--r) + 4px);
+      border:1px solid var(--border);
+      background: linear-gradient(180deg, rgba(18,27,47,.98), rgba(15,24,48,.96));
+      box-shadow: var(--shadow);
+      overflow:hidden;
+    }
+    .modal-hd{
+      padding:14px 14px;
+      border-bottom:1px solid var(--border);
+      display:flex; gap:10px; align-items:center;
+      background: rgba(255,255,255,.03);
+    }
+    .modal-bd{padding:14px}
+    .modal-ft{
+      padding:14px;
+      border-top:1px solid var(--border);
+      display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap;
+      background: rgba(255,255,255,.02);
+    }
+    .hint{font-size:12px; color:var(--muted)}
+
   </style>
 </head>
 
@@ -207,12 +248,12 @@
           <div class="bd">
             <div class="hstack">
               <div class="field" style="margin-top:0">
-                <label>Date From (ISO or YYYY-MM-DD)</label>
-                <input id="dateFrom" placeholder="2026-01-01" oninput="debouncedRefreshEvents()" />
+                <label>Date From</label>
+                <input id="dateFrom" type="date" oninput="debouncedRefreshEvents()" />
               </div>
               <div class="field" style="margin-top:0">
-                <label>Date To (ISO or YYYY-MM-DD)</label>
-                <input id="dateTo" placeholder="2026-01-31" oninput="debouncedRefreshEvents()" />
+                <label>Date To</label>
+                <input id="dateTo" type="date" oninput="debouncedRefreshEvents()" />
               </div>
               <div class="field" style="margin-top:0">
                 <label>Location / Venue</label>
@@ -374,8 +415,8 @@
                   <input id="evCategory" placeholder="Music / Sports / Tech..." />
                 </div>
                 <div class="field">
-                  <label>Date/Time (ISO string)</label>
-                  <input id="evDT" placeholder="2026-01-15T18:30:00+00:00" />
+                  <label>Date/Time</label>
+                  <input id="evDT" type="datetime-local" />
                 </div>
               </div>
               <div class="hstack">
@@ -498,6 +539,89 @@
     </section>
   </div>
 
+
+  <!-- Dummy Payment Portal (UX-only) -->
+  <div class="modal" id="payModal" aria-hidden="true">
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="payTitle">
+      <div class="modal-hd">
+        <div>
+          <div style="font-weight:900" id="payTitle">Secure Checkout</div>
+          <div class="muted small">This is a demo payment portal (no real charges).</div>
+        </div>
+        <div class="right">
+          <span class="badge brand" id="payStepBadge">Step 1/2</span>
+        </div>
+      </div>
+
+      <div class="modal-bd">
+        <div class="badge ok" style="display:inline-block; margin-bottom:10px">Order Summary</div>
+        <div class="item" style="margin-bottom:12px">
+          <div class="meta">
+            <div style="font-weight:900" id="payEventTitle">—</div>
+            <div class="muted small" id="payTicketMeta">—</div>
+          </div>
+          <div style="text-align:right">
+            <div class="muted small">Total</div>
+            <div style="font-size:18px; font-weight:900" id="payTotal">$0.00</div>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div id="payStep1">
+          <div class="badge brand" style="display:inline-block; margin-bottom:10px">Payment Details</div>
+
+          <div class="field">
+            <label>Cardholder Name</label>
+            <input id="payName" placeholder="Saw Leo Student" autocomplete="cc-name" />
+          </div>
+
+          <div class="field">
+            <label>Card Number</label>
+            <input id="payCard" placeholder="4242 4242 4242 4242" inputmode="numeric" autocomplete="cc-number" />
+            <div class="hint">Tip: any 12–19 digits will pass (demo).</div>
+          </div>
+
+          <div class="hstack">
+            <div class="field">
+              <label>Expiry (MM/YY)</label>
+              <input id="payExp" placeholder="12/30" inputmode="numeric" autocomplete="cc-exp" />
+            </div>
+            <div class="field">
+              <label>CVV</label>
+              <input id="payCvv" placeholder="123" inputmode="numeric" autocomplete="cc-csc" />
+            </div>
+          </div>
+
+          <div class="divider"></div>
+          <div class="muted small">
+            By continuing, you agree to the demo terms. No payment is processed.
+          </div>
+        </div>
+
+        <div id="payStep2" class="hidden">
+          <div class="badge brand" style="display:inline-block; margin-bottom:10px">Processing</div>
+          <div class="muted" style="margin-bottom:10px">
+            Please wait while we confirm availability and finalize your ticket purchase.
+          </div>
+          <div class="item">
+            <div class="meta">
+              <div style="font-weight:900">Authorization</div>
+              <div class="muted small">Simulated gateway • Tokenized card</div>
+            </div>
+            <span class="badge warn" id="payStatus">Pending…</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-ft">
+        <button class="btn" onclick="closePayment()">Cancel</button>
+        <button class="btn primary" id="payContinueBtn" onclick="continuePayment()">Pay & Purchase</button>
+      </div>
+    </div>
+  </div>
+
+
   <div class="toast" id="toast">
     <div class="t" id="toastTitle">—</div>
     <div class="m" id="toastMsg">—</div>
@@ -569,6 +693,42 @@
     const n = Number(x || 0);
     return n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
+
+  // -----------------------
+  // Date helpers
+  // -----------------------
+  function toIsoFromLocalDateTimeInput(v){
+    // v: "YYYY-MM-DDTHH:MM" (local)
+    if(!v) return '';
+    const d = new Date(v);
+    if(Number.isNaN(d.getTime())) return '';
+    // Convert to UTC ISO. Backend accepts ISO strings.
+    return d.toISOString();
+  }
+
+  function toLocalDateTimeInputValue(iso){
+    if(!iso) return '';
+    const d = new Date(iso);
+    if(Number.isNaN(d.getTime())) return '';
+    const pad = (n)=> String(n).padStart(2,'0');
+    const yyyy = d.getFullYear();
+    const mm = pad(d.getMonth()+1);
+    const dd = pad(d.getDate());
+    const hh = pad(d.getHours());
+    const mi = pad(d.getMinutes());
+    return `${yyyy}-${mm}-${dd}T${hh}:${mi}`;
+  }
+
+  // -----------------------
+  // Dummy payment portal state
+  // -----------------------
+  const pay = {
+    open:false,
+    ticketTypeId:null,
+    quantity:1,
+    ticket:null,
+    event:null,
+  };
 
   // Robust JSON fetch: timeout + consistent error reporting
   async function api(path, { method='GET', body=null, headers={}, timeoutMs=12000 } = {}){
@@ -816,30 +976,123 @@
         </div>
         <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; justify-content:flex-end">
           <input id="buyQty_${t.id}" type="number" min="1" value="1" style="width:86px" ${canBuy ? '' : 'disabled'} />
-          <button class="btn primary" ${canBuy ? '' : 'disabled'} onclick="buyTicket('${t.id}')">Buy</button>
+          <button class="btn primary" ${canBuy ? '' : 'disabled'} onclick="startCheckout('${t.id}')">Buy</button>
         </div>
       `;
       list.appendChild(el);
     });
   }
 
-  async function buyTicket(ticketTypeId){
+  
+  // -----------------------
+  // Checkout (Dummy Payment Portal)
+  // -----------------------
+  function openPayment(){
+    const modal = document.getElementById('payModal');
+    modal.classList.add('show');
+    modal.setAttribute('aria-hidden','false');
+    pay.open = true;
+    document.getElementById('payStep1').classList.remove('hidden');
+    document.getElementById('payStep2').classList.add('hidden');
+    document.getElementById('payStepBadge').textContent = 'Step 1/2';
+    document.getElementById('payStatus').textContent = 'Pending…';
+    document.getElementById('payStatus').className = 'badge warn';
+    document.getElementById('payContinueBtn').disabled = false;
+    // reset fields
+    document.getElementById('payName').value = '';
+    document.getElementById('payCard').value = '';
+    document.getElementById('payExp').value = '';
+    document.getElementById('payCvv').value = '';
+  }
+
+  function closePayment(){
+    const modal = document.getElementById('payModal');
+    modal.classList.remove('show');
+    modal.setAttribute('aria-hidden','true');
+    pay.open = false;
+  }
+
+  function setPaymentSummary(){
+    const ev = pay.event || state.selectedEvent;
+    const t = pay.ticket;
+    document.getElementById('payEventTitle').textContent = ev?.title || '—';
+    document.getElementById('payTicketMeta').textContent = `${t?.name || '—'} • Qty ${pay.quantity} • $${money(t?.price || 0)} each`;
+    const total = Number(t?.price || 0) * Number(pay.quantity || 1);
+    document.getElementById('payTotal').textContent = '$' + money(total);
+  }
+
+  function validatePaymentForm(){
+    const name = document.getElementById('payName').value.trim();
+    const card = document.getElementById('payCard').value.replaceAll(' ','').trim();
+    const exp = document.getElementById('payExp').value.trim();
+    const cvv = document.getElementById('payCvv').value.trim();
+
+    if(name.length < 2) return 'Enter cardholder name.';
+    if(!/^\d{12,19}$/.test(card)) return 'Enter a valid card number (12–19 digits).';
+    if(!/^(0[1-9]|1[0-2])\/(\d{2})$/.test(exp)) return 'Expiry must be MM/YY.';
+    if(!/^\d{3,4}$/.test(cvv)) return 'CVV must be 3–4 digits.';
+    return null;
+  }
+
+  async function continuePayment(){
+    const err = validatePaymentForm();
+    if(err){ toast('Payment details', err, 'warn'); return; }
+
+    document.getElementById('payStep1').classList.add('hidden');
+    document.getElementById('payStep2').classList.remove('hidden');
+    document.getElementById('payStepBadge').textContent = 'Step 2/2';
+    document.getElementById('payContinueBtn').disabled = true;
+
+    // Simulate gateway latency
+    await new Promise(r => setTimeout(r, 900));
+    document.getElementById('payStatus').textContent = 'Authorized';
+    document.getElementById('payStatus').className = 'badge ok';
+
+    await new Promise(r => setTimeout(r, 450));
+    await purchaseNow();
+  }
+
+  function startCheckout(ticketTypeId){
     if(!state.user){
       toast('Login required', 'Please sign in to purchase tickets.', 'warn');
       go('#/login'); return;
     }
+    const t = (state.selectedEventTickets || []).find(x => x.id === ticketTypeId);
+    if(!t){ toast('Error', 'Ticket type not found.', 'bad'); return; }
+
     const qtyEl = document.getElementById(`buyQty_${ticketTypeId}`);
     const quantity = Math.max(1, Number(qtyEl ? qtyEl.value : 1) || 1);
 
+    pay.ticketTypeId = ticketTypeId;
+    pay.quantity = quantity;
+    pay.ticket = t;
+    pay.event = state.selectedEvent;
+    setPaymentSummary();
+    openPayment();
+  }
+
+  async function purchaseNow(){
     try{
-      const data = await api('/api/purchase', { method:'POST', body:{ ticket_type_id: ticketTypeId, quantity }});
+      const data = await api('/api/purchase', { method:'POST', body:{ ticket_type_id: pay.ticketTypeId, quantity: pay.quantity }});
+      closePayment();
       toast('Success', data.message || 'Purchase complete.', 'ok');
       if(state.selectedEvent?.id) await selectEvent(state.selectedEvent.id);
     }catch(e){
+      // Still close modal, but show helpful message
+      closePayment();
       toast('Purchase failed', e.message, 'bad');
       if(state.selectedEvent?.id) await selectEvent(state.selectedEvent.id);
     }
   }
+
+  // Close modal on background click / ESC
+  document.addEventListener('keydown', (e)=>{
+    if(e.key === 'Escape' && pay.open) closePayment();
+  });
+  document.getElementById('payModal')?.addEventListener('click', (e)=>{
+    if(e.target && e.target.id === 'payModal') closePayment();
+  });
+
 
   // -----------------------
   // Manage
@@ -928,7 +1181,7 @@
     document.getElementById('evTitle').value = ev.title || '';
     document.getElementById('evDesc').value = ev.description || '';
     document.getElementById('evCategory').value = ev.category || '';
-    document.getElementById('evDT').value = ev.dt || '';
+    document.getElementById('evDT').value = toLocalDateTimeInputValue(ev.dt || '');
     document.getElementById('evVenue').value = ev.venue || '';
     document.getElementById('evCapacity').value = Number(ev.capacity || 0);
   }
@@ -948,13 +1201,13 @@
       title: document.getElementById('evTitle').value.trim(),
       description: document.getElementById('evDesc').value.trim(),
       category: document.getElementById('evCategory').value.trim(),
-      dt: document.getElementById('evDT').value.trim(),
+      dt: toIsoFromLocalDateTimeInput(document.getElementById('evDT').value.trim()),
       venue: document.getElementById('evVenue').value.trim(),
       capacity: Number(document.getElementById('evCapacity').value || 0),
     };
 
     if(!body.title){ toast('Validation', 'Title is required.', 'warn'); return; }
-    if(!body.dt){ toast('Validation', 'Date/time (ISO) is required.', 'warn'); return; }
+    if(!body.dt){ toast('Validation', 'Date/time is required.', 'warn'); return; }
     if(!body.capacity || body.capacity < 1){ toast('Validation', 'Capacity must be >= 1.', 'warn'); return; }
 
     try{
