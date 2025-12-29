@@ -844,18 +844,29 @@
     const navLogin = document.getElementById('navLogin');
     const navLogout = document.getElementById('navLogout');
     const navTickets = document.getElementById('navTickets');
+    const navManage = document.getElementById('navManage');
+    const navSales = document.getElementById('navSales');
 
     if(!state.user){
       pill.textContent = 'Not signed in';
       navLogin.classList.remove('hidden');
       navLogout.classList.add('hidden');
       navTickets.classList.add('hidden');
+      // Hide privileged pages when signed out
+      navManage.classList.remove('hidden');
+      navSales.classList.remove('hidden');
       return;
     }
+
     pill.textContent = `${state.user.email} • ${state.user.role.toUpperCase()}`;
     navLogin.classList.add('hidden');
     navLogout.classList.remove('hidden');
     navTickets.classList.remove('hidden');
+
+    const isPrivileged = (state.user.role === 'admin' || state.user.role === 'organizer');
+    // For attendees, hide Manage/Sales so it doesn't look like login "failed"
+    navManage.classList.toggle('hidden', !isPrivileged);
+    navSales.classList.toggle('hidden', !isPrivileged);
   }
 
   async function doLogin(){
