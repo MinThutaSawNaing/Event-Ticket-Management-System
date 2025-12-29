@@ -213,6 +213,7 @@
 
       <div class="nav">
         <button class="btn" id="navBrowse" onclick="go('#/browse')">Browse</button>
+        <button class="btn hidden" id="navTickets" onclick="go('#/tickets')">My Tickets</button>
         <button class="btn" id="navSales" onclick="go('#/sales')">Sales</button>
         <button class="btn" id="navManage" onclick="go('#/manage')">Manage</button>
         <button class="btn primary" id="navLogin" onclick="go('#/login')">Login</button>
@@ -297,6 +298,58 @@
               <div class="divider"></div>
               <div class="muted small">
                 Note: Purchases require login. Overselling is prevented server-side.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- VIEW: My Tickets (Attendees) -->
+    <section id="viewTickets" class="view hidden">
+      <div class="grid">
+        <div class="card">
+          <div class="hd">
+            <div>
+              <div class="title">My Tickets</div>
+              <div class="subtitle">View your purchases and print 50&nbsp;mm slips</div>
+            </div>
+            <button class="btn primary right" onclick="loadMyPurchases()">Refresh</button>
+          </div>
+          <div class="bd">
+            <div id="myPurchasesList" class="list"></div>
+            <div id="myPurchasesEmpty" class="muted small hidden">No tickets purchased yet.</div>
+            <div class="divider"></div>
+            <div class="muted small">
+              Printing uses a 50&nbsp;mm thermal-style layout (you can change printer scaling to “Actual size”).
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="hd">
+            <div>
+              <div style="font-weight:900">Preview</div>
+              <div class="muted small">Select a ticket to preview &amp; print</div>
+            </div>
+            <span class="badge brand right" id="ticketPreviewBadge">—</span>
+          </div>
+          <div class="bd">
+            <div id="ticketPreviewEmpty" class="muted">Select a ticket from the left.</div>
+            <div id="ticketPreviewWrap" class="hidden">
+              <div style="font-weight:900; font-size:18px" id="pvTitle"></div>
+              <div class="muted small" id="pvMeta"></div>
+              <div class="divider"></div>
+              <div class="muted" id="pvLines"></div>
+              <div class="divider"></div>
+              <div class="hstack">
+                <button class="btn primary" onclick="printSelectedSlip()">Print 50mm Slip</button>
+                <button class="btn" onclick="copySelectedTicketId()">Copy Ticket ID</button>
+              </div>
+              <div class="divider"></div>
+              <div class="muted small">
+                Tip: If your printer adds margins, set paper width 50&nbsp;mm and disable “Fit to page”.
               </div>
             </div>
           </div>
@@ -634,6 +687,7 @@
   const views = {
     browse: document.getElementById('viewBrowse'),
     login: document.getElementById('viewLogin'),
+    tickets: document.getElementById('viewTickets'),
     manage: document.getElementById('viewManage'),
     sales: document.getElementById('viewSales'),
   };
@@ -649,17 +703,24 @@
     const h = location.hash || '#/browse';
     const page = (h.split('/')[1] || 'browse').toLowerCase();
 
-    if((page === 'manage' || page === 'sales')){
+    // Pages that require login
+    if((page === 'manage' || page === 'sales' || page === 'tickets')){
       if(!state.user){ toast('Login required', 'Please sign in to access this page.', 'warn'); go('#/login'); return; }
+    }
+
+    // Pages restricted to Admin/Organizer
+    if((page === 'manage' || page === 'sales')){
       if(!(state.user.role === 'admin' || state.user.role === 'organizer')){
         toast('Forbidden', 'This page is for Admin/Organizer.', 'bad');
         go('#/browse'); return;
       }
     }
 
+
     showView(page);
 
     if(page === 'browse') refreshEvents();
+    if(page === 'tickets') loadMyPurchases();
     if(page === 'manage') loadMyEvents();
     if(page === 'sales') loadSales();
   }
@@ -672,6 +733,8 @@
     events: [],
     selectedEvent: null,
     selectedEventTickets: [],
+    purchases: [],
+    selectedPurchase: null,
     editor: { eventId: null, mode: 'idle', ticketMode: 'none', ticketId: null },
     chart: null,
   };
@@ -780,16 +843,19 @@
     const pill = document.getElementById('pillUser');
     const navLogin = document.getElementById('navLogin');
     const navLogout = document.getElementById('navLogout');
+    const navTickets = document.getElementById('navTickets');
 
     if(!state.user){
       pill.textContent = 'Not signed in';
       navLogin.classList.remove('hidden');
       navLogout.classList.add('hidden');
+      navTickets.classList.add('hidden');
       return;
     }
     pill.textContent = `${state.user.email} • ${state.user.role.toUpperCase()}`;
     navLogin.classList.add('hidden');
     navLogout.classList.remove('hidden');
+    navTickets.classList.remove('hidden');
   }
 
   async function doLogin(){
@@ -833,6 +899,8 @@
       state.user = null;
       state.selectedEvent = null;
       state.selectedEventTickets = [];
+      state.purchases = [];
+      state.selectedPurchase = null;
       renderUserPill();
       toast('Signed out', 'You are now logged out.', 'ok');
       go('#/browse');
@@ -1093,6 +1161,200 @@
     if(e.target && e.target.id === 'payModal') closePayment();
   });
 
+
+
+  // -----------------------
+  // My Tickets
+  // -----------------------
+  async function loadMyPurchases(){
+    try{
+      const data = await api('/api/my/purchases', { method:'GET', headers:{} });
+      state.purchases = data.purchases || [];
+      renderMyPurchasesList();
+      // keep preview in sync
+      if(state.selectedPurchase){
+        const fresh = state.purchases.find(p => p.id === state.selectedPurchase.id);
+        state.selectedPurchase = fresh || null;
+        renderPurchasePreview(state.selectedPurchase);
+      }
+    }catch(e){
+      toast('Error', e.message, 'bad');
+    }
+  }
+
+  function renderMyPurchasesList(){
+    const list = document.getElementById('myPurchasesList');
+    const empty = document.getElementById('myPurchasesEmpty');
+    if(!list || !empty) return;
+
+    list.innerHTML = '';
+    if(!state.purchases.length){
+      empty.classList.remove('hidden');
+      return;
+    }
+    empty.classList.add('hidden');
+
+    state.purchases.forEach(p => {
+      const ev = p.event || {};
+      const tk = p.ticket_type || {};
+      const el = document.createElement('div');
+      el.className = 'item';
+      el.innerHTML = `
+        <div class="meta">
+          <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap">
+            <div style="font-weight:900">${escapeHtml(ev.title || 'Event')}</div>
+            <span class="badge brand">${escapeHtml(tk.name || 'Ticket')}</span>
+          </div>
+          <div class="muted small">${escapeHtml(ev.dt || '')} • ${escapeHtml(ev.venue || '')}</div>
+          <div class="kvs">
+            <span class="kv">Qty: ${Number(p.quantity||0)}</span>
+            <span class="kv">Paid: $${money(p.total_price||0)}</span>
+            <span class="kv">Purchased: ${escapeHtml(p.purchased_at || '')}</span>
+          </div>
+        </div>
+        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; justify-content:flex-end">
+          <button class="btn" onclick="selectPurchase('${p.id}')">Preview</button>
+          <button class="btn primary" onclick="printSlipById('${p.id}')">Print</button>
+        </div>
+      `;
+      list.appendChild(el);
+    });
+  }
+
+  function selectPurchase(purchaseId){
+    const p = (state.purchases || []).find(x => x.id === purchaseId);
+    state.selectedPurchase = p || null;
+    renderPurchasePreview(state.selectedPurchase);
+  }
+
+  function renderPurchasePreview(p){
+    const empty = document.getElementById('ticketPreviewEmpty');
+    const wrap = document.getElementById('ticketPreviewWrap');
+    const badge = document.getElementById('ticketPreviewBadge');
+    if(!empty || !wrap || !badge) return;
+
+    if(!p){
+      empty.classList.remove('hidden');
+      wrap.classList.add('hidden');
+      badge.textContent = '—';
+      return;
+    }
+
+    const ev = p.event || {};
+    const tk = p.ticket_type || {};
+    empty.classList.add('hidden');
+    wrap.classList.remove('hidden');
+
+    badge.textContent = tk.name || 'Ticket';
+    document.getElementById('pvTitle').textContent = ev.title || 'Event';
+    document.getElementById('pvMeta').textContent = `${ev.dt || ''} • ${ev.venue || ''}`;
+
+    const lines = [
+      `Ticket Type: ${tk.name || '—'}`,
+      `Quantity: ${Number(p.quantity||0)}`,
+      `Total Paid: $${money(p.total_price||0)}`,
+      `Ticket ID: ${p.id}`,
+      `Purchased: ${p.purchased_at || ''}`,
+    ];
+    document.getElementById('pvLines').innerHTML = lines.map(x => `<div>${escapeHtml(x)}</div>`).join('');
+  }
+
+  function printSlipById(purchaseId){
+    selectPurchase(purchaseId);
+    printSelectedSlip();
+  }
+
+  function printSelectedSlip(){
+    const p = state.selectedPurchase;
+    if(!p){ toast('Select a ticket', 'Choose a ticket to print.', 'warn'); return; }
+    const w = window.open('', '_blank', 'noopener,noreferrer,width=420,height=720');
+    if(!w){ toast('Popup blocked', 'Allow popups to print the slip.', 'warn'); return; }
+
+    w.document.open();
+    w.document.write(buildSlipHtml(p));
+    w.document.close();
+
+    // Let the browser render first
+    setTimeout(() => { try{ w.focus(); w.print(); }catch(_){} }, 200);
+  }
+
+  function copySelectedTicketId(){
+    const p = state.selectedPurchase;
+    if(!p){ toast('Select a ticket', 'Choose a ticket first.', 'warn'); return; }
+    const id = p.id || '';
+    navigator.clipboard?.writeText(id).then(
+      () => toast('Copied', 'Ticket ID copied.', 'ok'),
+      () => toast('Copy failed', 'Could not copy Ticket ID.', 'bad')
+    );
+  }
+
+  function buildSlipHtml(p){
+    const ev = p.event || {};
+    const tk = p.ticket_type || {};
+    const qty = Number(p.quantity || 0);
+    const total = money(p.total_price || 0);
+
+    const esc = (s) => String(s ?? '')
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#039;');
+
+    // 50mm slip, thermal-like styling
+    return `<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Ticket Slip</title>
+  <style>
+    @page { size: 50mm auto; margin: 4mm; }
+    html, body { padding:0; margin:0; }
+    body{
+      width: 50mm;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      color:#000;
+      font-size: 11px;
+      line-height: 1.25;
+    }
+    .c{ text-align:center; }
+    .b{ font-weight:900; }
+    .mt{ margin-top:6px; }
+    .hr{ border-top:1px dashed #000; margin:6px 0; }
+    .row{ display:flex; justify-content:space-between; gap:8px; }
+    .small{ font-size:10px; }
+    .id{ word-break:break-all; }
+  </style>
+</head>
+<body>
+  <div class="c b">SAW LEO SCHOOL</div>
+  <div class="c">Event Ticket</div>
+  <div class="hr"></div>
+
+  <div class="b">${esc(ev.title || 'Event')}</div>
+  <div class="small">${esc(ev.dt || '')}</div>
+  <div class="small">${esc(ev.venue || '')}</div>
+
+  <div class="hr"></div>
+
+  <div class="row"><div>Type</div><div class="b">${esc(tk.name || 'Ticket')}</div></div>
+  <div class="row"><div>Qty</div><div class="b">${esc(qty)}</div></div>
+  <div class="row"><div>Paid</div><div class="b">$${esc(total)}</div></div>
+
+  <div class="hr"></div>
+
+  <div class="small">Ticket ID:</div>
+  <div class="id b">${esc(p.id || '')}</div>
+
+  <div class="mt small">Purchased:</div>
+  <div class="small">${esc(p.purchased_at || '')}</div>
+
+  <div class="hr"></div>
+  <div class="c small">Thank you!</div>
+</body>
+</html>`;
+  }
 
   // -----------------------
   // Manage

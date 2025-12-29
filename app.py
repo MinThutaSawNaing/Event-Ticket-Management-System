@@ -283,6 +283,27 @@ def public_ticket_type(t: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
+
+def public_purchase(p: Dict[str, Any], event_doc: Optional[Dict[str, Any]] = None,
+                    ticket_doc: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """Public-facing purchase record including denormalized event/ticket details."""
+    out = {
+        "id": str(p.get("_id")),
+        "user_id": str(p.get("user_id")) if p.get("user_id") else None,
+        "event_id": str(p.get("event_id")) if p.get("event_id") else None,
+        "ticket_type_id": str(p.get("ticket_type_id")) if p.get("ticket_type_id") else None,
+        "quantity": int(p.get("quantity", 0)),
+        "unit_price": float(p.get("unit_price", 0.0)),
+        "total_price": float(p.get("total_price", 0.0)),
+        "purchased_at": p.get("purchased_at", ""),
+    }
+    if event_doc:
+        out["event"] = public_event(event_doc)
+    if ticket_doc:
+        out["ticket_type"] = public_ticket_type(ticket_doc)
+    return out
+
+
 def safe_int(value: Any, field: str, min_value: Optional[int] = None) -> int:
     try:
         n = int(value)
@@ -846,6 +867,37 @@ def my_events():
     query: Dict[str, Any] = {} if current_user.role == "admin" else {"organizer_id": to_oid(current_user.id)}
     events = list(events_col.find(query).sort("created_at", DESCENDING).limit(200))
     return ok({"events": [public_event(e) for e in events]})
+
+
+
+# -------------------------
+# Convenience: my purchases / tickets
+# -------------------------
+@app.get("/api/my/purchases")
+@require_roles("attendee", "organizer", "admin")
+def my_purchases():
+    """Return purchases for the currently signed-in user (for 'My Tickets' UI)."""
+    docs = list(
+        purchases_col.find({"user_id": to_oid(current_user.id)})
+        .sort("purchased_at", DESCENDING)
+        .limit(200)
+    )
+    if not docs:
+        return ok({"purchases": []})
+
+    event_ids = list({d.get("event_id") for d in docs if d.get("event_id")})
+    ticket_ids = list({d.get("ticket_type_id") for d in docs if d.get("ticket_type_id")})
+
+    events_map = {e["_id"]: e for e in events_col.find({"_id": {"$in": event_ids}})}
+    tickets_map = {t["_id"]: t for t in ticket_types_col.find({"_id": {"$in": ticket_ids}})}
+
+    out = []
+    for p in docs:
+        ev = events_map.get(p.get("event_id"))
+        tk = tickets_map.get(p.get("ticket_type_id"))
+        out.append(public_purchase(p, ev, tk))
+
+    return ok({"purchases": out})
 
 
 if __name__ == "__main__":
