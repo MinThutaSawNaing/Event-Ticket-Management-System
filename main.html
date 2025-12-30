@@ -362,11 +362,34 @@
         color: var(--muted);
       }
 
-      /* Browse Events scrollbar */
-      #eventsList {
-        max-height: 520px;
+      /* Browse Events scrollbar — clean & subtle */
+      #viewBrowse .list#eventsList {
+        max-height: calc(100vh - 320px);
         overflow-y: auto;
-        padding-right: 6px;
+        overflow-x: hidden;
+
+        /* Firefox */
+        scrollbar-width: thin;
+        scrollbar-color: rgba(255, 255, 255, 0.25) rgba(255, 255, 255, 0.05);
+      }
+
+      /* Chrome / Edge / Safari */
+      #viewBrowse .list#eventsList::-webkit-scrollbar {
+        width: 8px;
+      }
+
+      #viewBrowse .list#eventsList::-webkit-scrollbar-track {
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 8px;
+      }
+
+      #viewBrowse .list#eventsList::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.28);
+        border-radius: 8px;
+      }
+
+      #viewBrowse .list#eventsList::-webkit-scrollbar-thumb:hover {
+        background: rgba(255, 255, 255, 0.4);
       }
     </style>
   </head>
