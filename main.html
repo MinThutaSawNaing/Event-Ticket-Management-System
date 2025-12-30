@@ -756,10 +756,17 @@
                 <div class="hstack">
                   <div class="field">
                     <label>Category</label>
-                    <input
-                      id="evCategory"
-                      placeholder="Music / Sports / Tech..."
-                    />
+                    <select id="evCategory" required>
+                      <option value="" disabled selected>
+                        Select category
+                      </option>
+                      <option>Music</option>
+                      <option>Sports</option>
+                      <option>Business</option>
+                      <option>Tech</option>
+                      <option>Arts</option>
+                      <option>Community</option>
+                    </select>
                   </div>
                   <div class="field">
                     <label>Date/Time</label>
