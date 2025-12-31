@@ -529,6 +529,50 @@
                 </div>
                 <div class="divider"></div>
                 <div id="detailDesc" class="muted"></div>
+                <div class="divider"></div>
+
+                <div style="font-weight: 900; margin-bottom: 8px">
+                  Location Map
+                </div>
+                <div id="mapEmpty" class="muted small">
+                  No map link provided.
+                </div>
+
+                <div id="mapWrap" class="hidden">
+                  <div class="hstack" style="align-items: center">
+                    <a
+                      class="btn primary"
+                      id="mapOpenBtn"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      Open in Google Maps
+                    </a>
+                  </div>
+
+                  <div class="divider"></div>
+
+                  <!-- Map “media window” (shows only if organizer uses an embed link) -->
+                  <iframe
+                    id="mapFrame"
+                    class="card"
+                    style="
+                      width: 100%;
+                      height: 260px;
+                      border: 0;
+                      border-radius: 14px;
+                    "
+                    loading="lazy"
+                    referrerpolicy="no-referrer-when-downgrade"
+                    allowfullscreen
+                  ></iframe>
+
+                  <div id="mapEmbedHint" class="hint" style="margin-top: 8px">
+                    Tip: For the embedded preview, paste a Google Maps
+                    <b>Embed</b> link. Otherwise, users can still click the
+                    button above.
+                  </div>
+                </div>
 
                 <div class="divider"></div>
                 <div style="font-weight: 900; margin-bottom: 8px">
@@ -778,6 +822,18 @@
                     <label>Venue / Location</label>
                     <input id="evVenue" />
                   </div>
+                  <div class="field">
+                    <label>Google Maps Link</label>
+                    <input
+                      id="evMapUrl"
+                      placeholder="https://www.google.com/maps/..."
+                    />
+                    <div class="hint">
+                      Paste a Google Maps share link (users can click it). If
+                      you paste an Embed link, a map preview will show.
+                    </div>
+                  </div>
+
                   <div class="field">
                     <label>Capacity</label>
                     <input id="evCapacity" type="number" min="1" />
@@ -1241,6 +1297,26 @@
         });
       }
 
+      function isLikelyEmbedUrl(url) {
+        const u = String(url || "");
+        return u.includes("/maps/embed") || u.includes("output=embed");
+      }
+
+      function toGoogleMapsOpenUrl(url) {
+        if (!url) return "";
+
+        // If it's an embed link, convert it to a normal maps link
+        if (url.includes("output=embed")) {
+          return url.replace("output=embed", "");
+        }
+
+        if (url.includes("/maps/embed")) {
+          return url.replace("/maps/embed", "/maps");
+        }
+
+        return url;
+      }
+
       // -----------------------
       // Date helpers
       // -----------------------
@@ -1546,6 +1622,32 @@
         document.getElementById("detailDesc").textContent =
           ev.description || "";
         cat.textContent = ev.category || "Uncategorized";
+        // ---- Map UI (button + optional embedded preview)
+        const mapUrl = (ev.map_url || "").trim();
+        const mapEmpty = document.getElementById("mapEmpty");
+        const mapWrap = document.getElementById("mapWrap");
+        const mapOpenBtn = document.getElementById("mapOpenBtn");
+        const mapFrame = document.getElementById("mapFrame");
+        const mapEmbedHint = document.getElementById("mapEmbedHint");
+
+        if (!mapUrl) {
+          mapEmpty.classList.remove("hidden");
+          mapWrap.classList.add("hidden");
+        } else {
+          mapEmpty.classList.add("hidden");
+          mapWrap.classList.remove("hidden");
+          mapOpenBtn.href = toGoogleMapsOpenUrl(mapUrl);
+
+          if (isLikelyEmbedUrl(mapUrl)) {
+            mapFrame.src = mapUrl;
+            mapFrame.classList.remove("hidden");
+            mapEmbedHint.classList.add("hidden");
+          } else {
+            mapFrame.removeAttribute("src");
+            mapFrame.classList.add("hidden");
+            mapEmbedHint.classList.remove("hidden");
+          }
+        }
 
         const list = document.getElementById("ticketsList");
         const tEmpty = document.getElementById("ticketsEmpty");
@@ -2224,6 +2326,7 @@
           ev.dt || ""
         );
         document.getElementById("evVenue").value = ev.venue || "";
+        document.getElementById("evMapUrl").value = ev.map_url || "";
         document.getElementById("evCapacity").value = Number(ev.capacity || 0);
       }
 
@@ -2249,6 +2352,7 @@
             document.getElementById("evDT").value.trim()
           ),
           venue: document.getElementById("evVenue").value.trim(),
+          map_url: document.getElementById("evMapUrl").value.trim(),
           capacity: Number(document.getElementById("evCapacity").value || 0),
         };
 

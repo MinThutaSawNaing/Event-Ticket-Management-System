@@ -261,6 +261,7 @@ def public_event(e: Dict[str, Any]) -> Dict[str, Any]:
         "category": e.get("category", ""),
         "dt": e.get("dt", ""),
         "venue": e.get("venue", ""),
+        "map_url": e.get("map_url", ""),
         "capacity": int(e.get("capacity", 0)),
         "created_at": e.get("created_at", ""),
         "updated_at": e.get("updated_at", ""),
@@ -336,6 +337,32 @@ def validate_password(pw: str) -> str:
     if len(pw) < 6:
         raise ApiError("Password must be at least 6 characters.", 400, "validation_error", {"field": "password"})
     return pw
+
+def validate_map_url(url: str) -> str:
+    url = (url or "").strip()
+    if not url:
+        return ""
+    # Simple validation: must be http(s) and look like Google Maps
+    if not (url.startswith("http://") or url.startswith("https://")):
+        raise ApiError(
+            "map_url must start with http:// or https://",
+            400,
+            "validation_error",
+            {"field": "map_url"},
+        )
+    if (
+        "google.com/maps" not in url
+        and "goo.gl/maps" not in url
+        and "maps.app.goo.gl" not in url
+    ):
+        raise ApiError(
+            "map_url must be a Google Maps link.",
+            400,
+            "validation_error",
+            {"field": "map_url"},
+        )
+    return url
+
 
 
 # -------------------------
@@ -530,6 +557,7 @@ def create_event():
     category = (data.get("category") or "").strip()
     dt = (data.get("dt") or "").strip()
     venue = (data.get("venue") or "").strip()
+    map_url = validate_map_url(data.get("map_url", ""))
     capacity = safe_int(data.get("capacity"), "capacity", min_value=1)
 
     if not title:
@@ -544,6 +572,7 @@ def create_event():
         "category": category,
         "dt": dt,
         "venue": venue,
+        "map_url": map_url,
         "capacity": capacity,
         "created_at": iso_now(),
         "updated_at": iso_now(),
@@ -571,6 +600,10 @@ def update_event(event_id: str):
         for k in ("title", "description", "category", "venue"):
             if k in data:
                 updates[k] = (data.get(k) or "").strip()
+                
+        if "map_url" in data:
+            updates["map_url"] = validate_map_url(data.get("map_url", ""))
+
 
         if "dt" in data:
             dt = (data.get("dt") or "").strip()
